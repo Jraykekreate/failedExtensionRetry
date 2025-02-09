@@ -1,0 +1,41 @@
+{
+    "manifest_version": 3,
+    "name": "LinkedIn Extension",
+    "version": "1.0",
+    "description": "A Chrome extension for enhancing LinkedIn experience.",
+    "permissions": [
+        "activeTab"
+    ],
+    "host_permissions": [
+        "https://www.linkedin.com/*",
+        "https://www.twitter.com/*"
+    ],
+    "background": {
+        "service_worker": "serviceWorker.bundle.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.linkedin.com/*",
+                "https://www.x.com/*"
+            ],
+            "js": [
+                "contentScript.bundle.js"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "models/model/*",
+                "dist/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
