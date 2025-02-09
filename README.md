@@ -18,4 +18,4 @@
 
 6. Test the Extension:
    - Open your LinkedIn feed (https://www.linkedin.com/feed/)
-   - The extension should now be active, processing posts based on the predefined configuration.
+   - The extension should now be active, processing posts based on the topic you give it🙂.
