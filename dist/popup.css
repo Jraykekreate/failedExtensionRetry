@@ -67,7 +67,9 @@ button {
 button:hover {
     background-color: #43a047;
 }
-
+.mark {
+    background-color: royalblue;
+}
 .container p {
     font-size: 0.9rem;
     color: #777;

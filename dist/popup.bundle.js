@@ -1153,7 +1153,7 @@ self.addEventListener('fetch', event => {
 
 
 
-async function triggerFilter(filter) {
+async function triggerFilter(filter, mark) {
     let platform = 'none'; // Default platform
 
     // Check the current URL to determine the platform
@@ -1165,7 +1165,7 @@ async function triggerFilter(filter) {
     } else if (tabUrl.includes('twitter.com/home') || tabUrl.includes('x.com/home')) {
         platform = 'twitter';
     }
-    const response = await chrome.tabs.sendMessage(tab.id, { platform, filter });
+    const response = await chrome.tabs.sendMessage(tab.id, { platform, filter, mark });
     // do something with response here, not outside the function
     console.log(response);
 }
@@ -26462,14 +26462,14 @@ __webpack_require__.r(__webpack_exports__);
 
 const inputText = document.querySelector('.inputText');
 const filterButton = document.getElementById('filter');
+const filterMark = document.getElementById('filterMark');
 
-
-filterButton.addEventListener("click", () => (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value));
-const res = async () => {
-    const result = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_1__.semanticSimilarity)("hello", "hi");
-    alert(result);
-}
-res();
+filterButton.addEventListener("click", () => {
+    (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, true);
+});
+filterMark.addEventListener("click", () => {
+    (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, false);
+});
 
 })();
 

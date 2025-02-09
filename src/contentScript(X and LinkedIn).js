@@ -1,7 +1,7 @@
 import { semanticSimilarity } from "./semanticSimilarity";
 
-
 (function () {
+    alert("im here")
     // Configuration
     const MAX_POSTS = 10;
     const DISMISS_THRESHOLD = 0.6;
@@ -32,99 +32,21 @@ import { semanticSimilarity } from "./semanticSimilarity";
         }
     };
 
-    // Track processed posts and state
+    // Track processed posts
     let results = [];
     let processedCount = 0;
     let processedPosts = new Map(); // Store references to processed posts
-    let filterKeyword = ''; // The current filter keyword
+    let filterKeyword = ''; // Store the current filter keyword
     let isDismissing = false; // Flag to track if we're currently dismissing posts
     let activeDropdown = null; // For Twitter dropdown tracking
-    let shouldMark = false; // Flag to control whether to mark posts
 
-    // Create controls for an individual post
-    const createPostControls = (postElement, postInfo, platform) => {
-        const controlsContainer = document.createElement('div');
-        controlsContainer.style.cssText = `
-            position: absolute;
-            top: 40px;
-            right: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            z-index: 1000;
-        `;
-
-        // Delete button
-        const deleteButton = document.createElement('button');
-        deleteButton.style.cssText = `
-            padding: 4px 8px;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            opacity: 0.9;
-            transition: opacity 0.3s;
-        `;
-        deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('mouseenter', () => deleteButton.style.opacity = '1');
-        deleteButton.addEventListener('mouseleave', () => deleteButton.style.opacity = '0.9');
-        deleteButton.onclick = async () => {
-            if (platform === 'linkedin') {
-                const dismissButton = postElement.querySelector(SELECTORS.linkedin.dismissButton);
-                if (dismissButton) {
-                    await dismissLinkedInPost(dismissButton, postInfo, postElement);
-                }
-            } else {
-                await dismissTwitterPost(postElement, postInfo);
-            }
-        };
-
-        // Unmark button
-        const unmarkButton = document.createElement('button');
-        unmarkButton.style.cssText = `
-            padding: 4px 8px;
-            background-color: #666666;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            opacity: 0.9;
-            transition: opacity 0.3s;
-        `;
-        unmarkButton.textContent = 'Unmark';
-        unmarkButton.addEventListener('mouseenter', () => unmarkButton.style.opacity = '1');
-        unmarkButton.addEventListener('mouseleave', () => unmarkButton.style.opacity = '0.9');
-        unmarkButton.onclick = () => {
-            const data = processedPosts.get(postElement);
-            if (data?.markers) {
-                data.markers.marker.remove();
-                data.markers.scoreDisplay.remove();
-                controlsContainer.remove();
-            }
-            processedPosts.delete(postElement);
-        };
-
-        controlsContainer.appendChild(deleteButton);
-        controlsContainer.appendChild(unmarkButton);
-
-        // Only append the controls if marking is enabled
-        if (shouldMark) {
-            postElement.appendChild(controlsContainer);
-        }
-
-        return controlsContainer;
-    };
-
-    // Create and add a marker to the post based on the similarity score
+    // Create and add marker to post
     const addMarker = (postElement, score) => {
         const marker = document.createElement('div');
         marker.style.cssText = `
             position: absolute;
             top: 10px;
-            left: 10px;
+            right: 10px;
             width: 12px;
             height: 12px;
             border-radius: 50%;
@@ -133,47 +55,29 @@ import { semanticSimilarity } from "./semanticSimilarity";
             box-shadow: 0 0 3px rgba(0,0,0,0.3);
         `;
 
-        let color;
+        // Set color based on score
         if (score >= SIMILARITY_THRESHOLDS.HIGH) {
-            color = '#4CAF50';
+            marker.style.backgroundColor = '#4CAF50'; // Green
         } else if (score >= SIMILARITY_THRESHOLDS.MEDIUM) {
-            color = '#FFC107';
+            marker.style.backgroundColor = '#FFC107'; // Yellow
         } else {
-            color = '#F44336';
+            marker.style.backgroundColor = '#F44336'; // Red
         }
-        marker.style.backgroundColor = color;
 
-        const scoreDisplay = document.createElement('div');
-        scoreDisplay.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 30px;
-            font-size: 12px;
-            font-weight: bold;
-            color: ${color};
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 2px 6px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            z-index: 1000;
-        `;
-        scoreDisplay.textContent = `${(score * 100).toFixed(1)}%`;
-
+        // Add tooltip
         marker.title = `Similarity Score: ${(score * 100).toFixed(1)}%`;
 
-        // Ensure the post element is positioned relatively so markers show correctly
+        // Ensure post element has relative positioning
         if (getComputedStyle(postElement).position === 'static') {
             postElement.style.position = 'relative';
         }
 
         postElement.appendChild(marker);
-        postElement.appendChild(scoreDisplay);
-        return { marker, scoreDisplay };
+        return marker;
     };
 
-    // LinkedIn-specific: observe the popup and auto-click "Not Interested"
+    // LinkedIn-specific functions
     const handleLinkedInPopup = (postContainer) => {
-        if (!shouldMark) return;
         console.log("LinkedIn: Starting to observe popup for post:", postContainer);
         const observer = new MutationObserver((mutations, obs) => {
             const notInterestedBtn = postContainer.querySelector(SELECTORS.linkedin.notInterested);
@@ -195,18 +99,19 @@ import { semanticSimilarity } from "./semanticSimilarity";
         }, POPUP_TIMEOUT);
     };
 
-    // Dismiss a LinkedIn post
     const dismissLinkedInPost = async (button, postInfo, postContainer) => {
-        if (!shouldMark || isDismissing) return;
+        if (isDismissing) return;
         isDismissing = true;
 
         console.log(`LinkedIn: Will dismiss post ${postInfo.postNumber}: "${postInfo.title}" in ${POST_DISMISS_DELAY}ms`);
         postContainer.style.transition = 'background-color 0.3s ease';
         postContainer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+        console.log("LinkedIn: Post background set for dismissal:", postContainer);
 
         await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
 
         button.click();
+        console.log("LinkedIn: Dismiss button clicked for post", postInfo.postNumber);
         postInfo.dismissed = true;
         handleLinkedInPopup(postContainer);
 
@@ -214,30 +119,31 @@ import { semanticSimilarity } from "./semanticSimilarity";
         isDismissing = false;
     };
 
-    // Twitter-specific: find the "Not Interested" button in the dropdown
+    // Twitter-specific functions
     const findNotInterestedButton = (dropdown) => {
-        if (!shouldMark) return null;
         const menuItems = dropdown.querySelectorAll('div[role="menuitem"]');
         for (const item of menuItems) {
-            if (item.textContent.toLowerCase().includes('not interested in this')) {
+            const text = item.textContent.toLowerCase();
+            if (text.includes('not interested in this')) {
                 return item;
             }
         }
         return null;
     };
 
-    // Dismiss a Twitter post
     const dismissTwitterPost = async (tweet, postInfo) => {
-        if (!shouldMark || isDismissing) return;
+        if (isDismissing) return;
         isDismissing = true;
 
         console.log(`Twitter: Will dismiss tweet ${postInfo.postNumber}: "${postInfo.title}" in ${POST_DISMISS_DELAY}ms`);
         tweet.style.transition = 'background-color 0.3s ease';
         tweet.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+        console.log("Twitter: Tweet background set for dismissal:", tweet);
 
         const moreButton = tweet.querySelector(SELECTORS.twitter.moreButton);
         if (moreButton) {
             moreButton.click();
+            console.log("Twitter: More button clicked for tweet", postInfo.postNumber);
 
             await new Promise(resolve => {
                 const checkDropdown = setInterval(() => {
@@ -245,11 +151,13 @@ import { semanticSimilarity } from "./semanticSimilarity";
                     if (dropdown) {
                         clearInterval(checkDropdown);
                         activeDropdown = dropdown;
+                        console.log("Twitter: Dropdown found for tweet", postInfo.postNumber);
                         resolve();
                     }
                 }, 100);
                 setTimeout(() => {
                     clearInterval(checkDropdown);
+                    console.log("Twitter: Dropdown check timed out for tweet", postInfo.postNumber);
                     resolve();
                 }, POPUP_TIMEOUT);
             });
@@ -257,8 +165,10 @@ import { semanticSimilarity } from "./semanticSimilarity";
             if (activeDropdown) {
                 const notInterestedButton = findNotInterestedButton(activeDropdown);
                 if (notInterestedButton) {
+                    console.log("Twitter: Not Interested button found in dropdown for tweet", postInfo.postNumber);
                     await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
                     notInterestedButton.click();
+                    console.log("Twitter: Dismiss action executed for tweet", postInfo.postNumber);
                     postInfo.dismissed = true;
                 }
                 activeDropdown = null;
@@ -269,25 +179,7 @@ import { semanticSimilarity } from "./semanticSimilarity";
         isDismissing = false;
     };
 
-    // Delete all posts with a low (red) similarity score
-    const deleteAllRedPosts = async () => {
-        const redPosts = Array.from(processedPosts.entries())
-            .filter(([_, data]) => data.info.score < SIMILARITY_THRESHOLDS.MEDIUM);
-
-        for (const [postElement, data] of redPosts) {
-            const platform = window.location.href.includes('linkedin.com') ? 'linkedin' : 'twitter';
-            if (platform === 'linkedin') {
-                const dismissButton = postElement.querySelector(SELECTORS.linkedin.dismissButton);
-                if (dismissButton) {
-                    await dismissLinkedInPost(dismissButton, data.info, postElement);
-                }
-            } else {
-                await dismissTwitterPost(postElement, data.info);
-            }
-        }
-    };
-
-    // Process a single post (LinkedIn or Twitter) based on the filter keyword
+    // Process posts based on platform
     const processPost = async (element, index, platform) => {
         if (!filterKeyword) return;
 
@@ -307,6 +199,7 @@ import { semanticSimilarity } from "./semanticSimilarity";
 
             const titleElement = postContainer.querySelector(SELECTORS.linkedin.postTitle);
             postInfo.title = titleElement?.firstChild?.textContent.trim().slice(0, 60) + '...';
+            console.log(`LinkedIn: Processing post ${postInfo.postNumber} with title:`, postInfo.title);
         } else {
             postContainer = element;
             if (processedPosts.has(postContainer)) return;
@@ -320,26 +213,28 @@ import { semanticSimilarity } from "./semanticSimilarity";
 
             const tweetTextElement = postContainer.querySelector(SELECTORS.twitter.tweetText);
             postInfo.title = tweetTextElement?.textContent.trim().slice(0, 60) + '...';
+            console.log(`Twitter: Processing tweet ${postInfo.postNumber} with title:`, postInfo.title);
         }
 
         try {
             const text = postContainer.textContent;
             postInfo.score = await semanticSimilarity(text, filterKeyword);
+            console.log(
+                `${platform === 'linkedin' ? 'LinkedIn' : 'Twitter'}: Semantic similarity score for post ${postInfo.postNumber}: ${postInfo.score}`
+            );
         } catch (error) {
             console.error('Error calculating semantic similarity:', error);
             postInfo.score = Math.random();
         }
 
-        const markers = addMarker(postContainer, postInfo.score);
-        const controls = createPostControls(postContainer, postInfo, platform);
+        const marker = addMarker(postContainer, postInfo.score);
 
         processedPosts.set(postContainer, {
             info: postInfo,
-            markers: markers,
-            controls: controls
+            marker: marker
         });
 
-        if (shouldMark && postInfo.score < DISMISS_THRESHOLD) {
+        if (postInfo.score < DISMISS_THRESHOLD) {
             if (platform === 'linkedin') {
                 dismissLinkedInPost(element, postInfo, postContainer);
             } else {
@@ -355,75 +250,80 @@ import { semanticSimilarity } from "./semanticSimilarity";
         }
     };
 
-    // Log the final results to the console
+    // Function to show final results
     const showFinalReport = () => {
         console.log('%cProcessing Complete!', 'color: green; font-size: 16px;');
         console.table(results);
     };
 
-    // Start processing posts on LinkedIn
+    // Platform-specific processing starters
     const startProcessingLinkedIn = () => {
         if (!filterKeyword) {
             console.log("LinkedIn: No filter keyword set, skipping processing.");
             return;
         }
+        console.log("LinkedIn: Starting processing of posts.");
         const dismissButtons = Array.from(document.querySelectorAll(SELECTORS.linkedin.dismissButton))
             .filter(btn => !processedPosts.has(btn.closest(SELECTORS.linkedin.postContainer)))
             .slice(0, MAX_POSTS);
 
         if (dismissButtons.length > 0) {
+            console.log(`LinkedIn: Found ${dismissButtons.length} posts to process`);
             dismissButtons.forEach((btn, index) => processPost(btn, index, 'linkedin'));
+        } else {
+            console.log('LinkedIn: No dismiss buttons found');
         }
+        alert("Content has been loaded for LinkedIn."); // Alert for LinkedIn content load
     };
 
-    // Start processing posts on Twitter
     const startProcessingTwitter = () => {
         if (!filterKeyword) {
             console.log("Twitter: No filter keyword set, skipping processing.");
             return;
         }
+        console.log("Twitter: Starting processing of tweets.");
         const tweets = Array.from(document.querySelectorAll(SELECTORS.twitter.tweetArticle))
             .filter(tweet => !processedPosts.has(tweet))
             .slice(0, MAX_POSTS);
 
         if (tweets.length > 0) {
+            console.log(`Twitter: Found ${tweets.length} tweets to process`);
             tweets.forEach((tweet, index) => processPost(tweet, index, 'twitter'));
+        } else {
+            console.log('Twitter: No tweets found');
         }
+        alert("Content has been loaded for Twitter."); // Alert for Twitter content load
     };
 
-    // Event listener for scrolling to trigger processing
+    // Scroll event handler
     window.addEventListener('scroll', () => {
         const currentURL = window.location.href;
+        console.log("Scroll event detected, current URL:", currentURL);
         if (currentURL.includes("linkedin.com/feed/")) {
+            console.log("LinkedIn: Detected feed on scroll event.");
             startProcessingLinkedIn();
-        } else if (currentURL.includes("x.com")) {
+        } else if (currentURL.includes("twitter.com")) {
+            console.log("Twitter: Detected feed on scroll event.");
             startProcessingTwitter();
         }
     });
 
-    // Event listener to clear the active Twitter dropdown when clicking outside
+    // Twitter-specific click handler for dropdowns
     document.addEventListener('click', (e) => {
         if (activeDropdown && !activeDropdown.contains(e.target)) {
+            console.log("Twitter: Click outside active dropdown, clearing dropdown state");
             activeDropdown = null;
         }
     });
 
-    // Message listener for runtime messages (e.g., from a background script)
+    // Message listener
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log("Message received:", request);
-        if (request.action === 'deleteRedPosts') {
-            deleteAllRedPosts();
-            return;
-        }
-
         // Clear existing state
         processedPosts.forEach((data, post) => {
-            if (data.markers) {
-                data.markers.marker.remove();
-                data.markers.scoreDisplay.remove();
+            if (data.marker && data.marker.parentNode) {
+                data.marker.remove();
             }
-            const controls = post.querySelector('div[style*="position: absolute"][style*="right: 10px"]');
-            if (controls) controls.remove();
             post.style.backgroundColor = '';
         });
         processedPosts.clear();
@@ -432,12 +332,14 @@ import { semanticSimilarity } from "./semanticSimilarity";
         isDismissing = false;
         activeDropdown = null;
 
-        // Update filter and marking behavior based on the message
+        // Set new filter keyword
         filterKeyword = request.filter;
-        shouldMark = request.mark;
-        console.log(`New filter keyword set: ${filterKeyword}, Marking enabled: ${shouldMark}`);
+        console.log(`New filter keyword set: ${filterKeyword}`);
 
-        // Begin processing on the appropriate platform
+        // Alert the change
+        alert(`${request.platform} ${request.filter} ${request.mark}`);
+
+        // Start processing based on platform
         if (request.platform.includes("linkedin")) {
             console.log("LinkedIn: Initiating processing after message update.");
             startProcessingLinkedIn();
