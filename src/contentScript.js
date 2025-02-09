@@ -1,3 +1,5 @@
+import { semanticSimilarity } from "./semanticSimilarity";
+
 (function () {
     // Configuration
     const MAX_POSTS = 10;
@@ -123,8 +125,8 @@
         };
 
         // Get post title/content
-        const titleElement = postContainer.querySelector('span[dir="ltr"]');
-        postInfo.title = titleElement?.firstChild?.textContent.trim().slice(0, 50) + '...';
+        const titleElement = postContainer.querySelector('div.feed-shared-update-v2__description div.update-components-text span.break-words > span[dir="ltr"]');
+        postInfo.title = titleElement?.firstChild?.textContent.trim().slice(0, 60) + '...';
 
         // Calculate semantic similarity score using the filter keyword
         try {
