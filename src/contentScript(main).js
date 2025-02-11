@@ -1,13 +1,36 @@
 import { semanticSimilarity } from "./semanticSimilarity";
 
+// Global queue for sequential dismissals
+let dismissalQueue = [];
+let processingDismissals = false;
+
+function enqueueDismissTask(task) {
+    dismissalQueue.push(task);
+    processDismissQueue();
+}
+
+function processDismissQueue() {
+    if (processingDismissals) return;
+    processingDismissals = true;
+    (async () => {
+        while (dismissalQueue.length > 0) {
+            const task = dismissalQueue.shift();
+            await task();
+            // Instead of waiting 1000ms (too long), wait 100ms between tasks.
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        processingDismissals = false;
+    })();
+}
 
 (function () {
-    // Configuration
-    const MAX_POSTS = 20;
+    // Configuration with updated delays to ensure each dismiss is under 600ms total
+    const MAX_POSTS = 10;
     const DISMISS_THRESHOLD = 0.4;
-    const POPUP_TIMEOUT = 800;
-    const POST_DISMISS_DELAY = 600;
-    const SEQUENTIAL_DISMISS_DELAY = 200;
+    // New timing settings (each delay is well below 600ms)
+    const POPUP_TIMEOUT = 300;            // Reduced from 800ms to 300ms
+    const POST_DISMISS_DELAY = 150;         // Reduced from 500ms to 150ms delay before dismissing posts
+    const SEQUENTIAL_DISMISS_DELAY = 50;    // Reduced from 200ms to 50ms delay between sequential dismissals
 
     // Semantic similarity thresholds
     const SIMILARITY_THRESHOLDS = {
@@ -171,45 +194,11 @@ import { semanticSimilarity } from "./semanticSimilarity";
         return { marker, scoreDisplay };
     };
 
-    // Helper function to search for a LinkedIn dropdown option that includes
-    // the text "hide or report this ad"
-    const findHideOrReportButton = (container) => {
-        // First, attempt to locate the dropdown container using its selector
-        const popup = container.querySelector(SELECTORS.linkedin.popupContainer);
-        if (popup) {
-            const options = popup.querySelectorAll('button, div, span');
-            for (const option of options) {
-                if (option.textContent && option.textContent.toLowerCase().includes('hide')) {
-                    return option;
-                }
-            }
-        }
-        // Fallback: search in the entire container
-        const options = container.querySelectorAll('button, div, span');
-        for (const option of options) {
-            if (option.textContent && option.textContent.toLowerCase().includes('hide')) {
-                return option;
-            }
-        }
-        return null;
-    };
-
-    // LinkedIn-specific: observe the popup and auto-click "Hide or Report This Ad"
+    // LinkedIn-specific: observe the popup and auto-click "Not Interested"
     const handleLinkedInPopup = (postContainer) => {
         if (!shouldMark) return;
         console.log("LinkedIn: Starting to observe popup for post:", postContainer);
-
         const observer = new MutationObserver((mutations, obs) => {
-            // Check for an option to "Hide or Report This Ad" first
-            const hideReportBtn = findHideOrReportButton(postContainer);
-            if (hideReportBtn) {
-                hideReportBtn.click();
-                console.log("LinkedIn: Clicked 'Hide or Report This Ad' for post:", postContainer);
-                obs.disconnect();
-                return;
-            }
-
-            // Fallback to the default "Not Interested" button if available
             const notInterestedBtn = postContainer.querySelector(SELECTORS.linkedin.notInterested);
             if (notInterestedBtn) {
                 notInterestedBtn.click();
@@ -229,23 +218,20 @@ import { semanticSimilarity } from "./semanticSimilarity";
         }, POPUP_TIMEOUT);
     };
 
-    // Dismiss a LinkedIn post
+    // Dismiss a LinkedIn post sequentially
     const dismissLinkedInPost = async (button, postInfo, postContainer) => {
-        if (!shouldMark || isDismissing) return;
-        isDismissing = true;
+        if (!shouldMark) return; // Only proceed if marking is enabled
+        enqueueDismissTask(async () => {
+            console.log(`LinkedIn: Will dismiss post ${postInfo.postNumber}: "${postInfo.title}" after ${POST_DISMISS_DELAY}ms`);
+            postContainer.style.transition = 'background-color 0.3s ease';
+            postContainer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
 
-        console.log(`LinkedIn: Will dismiss post ${postInfo.postNumber}: "${postInfo.title}" in ${POST_DISMISS_DELAY}ms`);
-        postContainer.style.transition = 'background-color 0.3s ease';
-        postContainer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
 
-        await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
-
-        button.click();
-        postInfo.dismissed = true;
-        handleLinkedInPopup(postContainer);
-
-        await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
-        isDismissing = false;
+            button.click();
+            postInfo.dismissed = true;
+            handleLinkedInPopup(postContainer);
+        });
     };
 
     // Twitter-specific: find the "Not Interested" button in the dropdown
@@ -260,128 +246,88 @@ import { semanticSimilarity } from "./semanticSimilarity";
         return null;
     };
 
-    // Twitter-specific: find the "mute" button in the dropdown
-    const findMuteButton = (dropdown) => {
-        const menuItems = dropdown.querySelectorAll('div[role="menuitem"]');
-        for (const item of menuItems) {
-            if (item.textContent.toLowerCase().includes('mute')) {
-                return item;
+    // New helper function to handle Twitter dropdown ad options
+    const handleTwitterAdDropdown = (dropdown) => {
+        if (!dropdown) return;
+        // Check if any descendant contains "why is ad ?"
+        const hasAdText = Array.from(dropdown.querySelectorAll('*')).some(el =>
+            el.textContent.toLowerCase().includes('why is ad ?')
+        );
+        if (hasAdText) {
+            // Find the first element with text containing "mute"
+            const muteOption = Array.from(dropdown.querySelectorAll('*')).find(el =>
+                el.textContent.toLowerCase().includes('mute')
+            );
+            if (muteOption) {
+                console.log('Twitter: Found ad text and clicking the mute option.');
+                muteOption.click();
+            } else {
+                console.log('Twitter: "why is ad ?" was found but no "mute" option exists.');
             }
         }
-        return null;
     };
 
-    // Add this helper function among the Twitter-specific functions
-    const observeTwitterSheetDialog = () => {
-        const observer = new MutationObserver((mutations, obs) => {
-            const dialog = document.querySelector('div[data-testid="sheetDialog"]');
-            if (dialog) {
-                // Look for a button or link with text including "maybe later"
-                const maybeLaterButton = Array.from(dialog.querySelectorAll('button, a'))
-                    .find(btn => btn.textContent && btn.textContent.toLowerCase().includes('maybe later'));
-                if (maybeLaterButton) {
-                    maybeLaterButton.click();
-                    console.log("Twitter: 'Maybe later' clicked in sheetDialog.");
-                    obs.disconnect();
-                }
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        setTimeout(() => {
-            observer.disconnect();
-            console.log("Twitter: Sheet dialog observer timed out.");
-        }, POPUP_TIMEOUT);
-    };
-
-    // Dismiss a Twitter post
+    // Updated dismissTwitterPost function
     const dismissTwitterPost = async (tweet, postInfo) => {
-        if (!shouldMark || isDismissing) return;
-        isDismissing = true;
+        if (!shouldMark) return;
+        enqueueDismissTask(async () => {
+            console.log(`Twitter: Will dismiss tweet ${postInfo.postNumber}: "${postInfo.title}" in ${POST_DISMISS_DELAY}ms`);
+            tweet.style.transition = 'background-color 0.3s ease';
+            tweet.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
 
-        console.log(`Twitter: Will dismiss tweet ${postInfo.postNumber}: "${postInfo.title}" in ${POST_DISMISS_DELAY}ms`);
-        tweet.style.transition = 'background-color 0.3s ease';
-        tweet.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            const moreButton = tweet.querySelector(SELECTORS.twitter.moreButton);
+            if (moreButton) {
+                moreButton.click();
 
-        const moreButton = tweet.querySelector(SELECTORS.twitter.moreButton);
-        if (moreButton) {
-            moreButton.click();
-
-            await new Promise(resolve => {
-                const checkDropdown = setInterval(() => {
-                    const dropdown = document.querySelector(SELECTORS.twitter.dropdown);
-                    if (dropdown) {
+                await new Promise(resolve => {
+                    const checkDropdown = setInterval(() => {
+                        const dropdown = document.querySelector(SELECTORS.twitter.dropdown);
+                        if (dropdown) {
+                            clearInterval(checkDropdown);
+                            activeDropdown = dropdown;
+                            resolve();
+                        }
+                    }, 100);
+                    setTimeout(() => {
                         clearInterval(checkDropdown);
-                        activeDropdown = dropdown;
                         resolve();
-                    }
-                }, 100);
-                setTimeout(() => {
-                    clearInterval(checkDropdown);
-                    resolve();
-                }, POPUP_TIMEOUT);
-            });
+                    }, POPUP_TIMEOUT);
+                });
 
-            if (activeDropdown) {
-                const notInterestedButton = findNotInterestedButton(activeDropdown);
-                if (notInterestedButton) {
-                    await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
-                    notInterestedButton.click();
-                    postInfo.dismissed = true;
-                } else {
-                    const muteButton = findMuteButton(activeDropdown);
-                    if (muteButton) {
+                if (activeDropdown) {
+                    // Check for ad text and click mute if found
+                    handleTwitterAdDropdown(activeDropdown);
+
+                    // Fallback: click the "not interested" option if available
+                    const notInterestedButton = findNotInterestedButton(activeDropdown);
+                    if (notInterestedButton) {
                         await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
-                        muteButton.click();
-
+                        notInterestedButton.click();
                         postInfo.dismissed = true;
-                        observeTwitterSheetDialog()
                     }
+                    activeDropdown = null;
                 }
-                activeDropdown = null;
             }
-        }
 
-        await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
-        isDismissing = false;
+            await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
+        });
     };
 
     // Delete all posts with a low (red) similarity score
     const deleteAllRedPosts = async () => {
-        // First pass: Get all posts with a similarity score below the MEDIUM threshold (i.e., "red" posts)
+        console.log(Array.from(processedPosts.entries()));
         const redPosts = Array.from(processedPosts.entries())
             .filter(([_, data]) => data.info.score < SIMILARITY_THRESHOLDS.MEDIUM);
 
-        console.log(`First pass: Found ${redPosts.length} posts to delete`);
-
-        // First pass - trigger delete buttons using the existing UI controls
         for (const [postElement, data] of redPosts) {
-            const controls = data.controls;
-            if (controls) {
-                const deleteButton = controls.querySelector('button');
-                if (deleteButton) {
-                    deleteButton.click();
-                    await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
+            const platform = window.location.href.includes('linkedin.com') ? 'linkedin' : 'twitter';
+            if (platform === 'linkedin') {
+                const dismissButton = postElement.querySelector(SELECTORS.linkedin.dismissButton);
+                if (dismissButton) {
+                    await dismissLinkedInPost(dismissButton, data.info, postElement);
                 }
-            }
-        }
-
-        // Wait briefly to allow any animations and state updates to complete
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Second pass - find any remaining marked posts that haven't been dismissed
-        const remainingPosts = Array.from(processedPosts.entries())
-            .filter(([_, data]) => data.info.score < SIMILARITY_THRESHOLDS.MEDIUM && !data.info.dismissed);
-
-        console.log(`Second pass: Found ${remainingPosts.length} remaining posts to delete`);
-
-        for (const [postElement, data] of remainingPosts) {
-            const controls = data.controls;
-            if (controls) {
-                const deleteButton = controls.querySelector('button');
-                if (deleteButton) {
-                    deleteButton.click();
-                    await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
-                }
+            } else {
+                await dismissTwitterPost(postElement, data.info);
             }
         }
     };

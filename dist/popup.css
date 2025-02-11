@@ -70,6 +70,9 @@ button:hover {
 .mark {
     background-color: royalblue;
 }
+.mark {
+    background-color: rgb(24, 76, 235);
+}
 .container p {
     font-size: 0.9rem;
     color: #777;

@@ -26405,11 +26405,11 @@ __webpack_require__.r(__webpack_exports__);
 
 (function () {
     // Configuration
-    const MAX_POSTS = 10;
-    const DISMISS_THRESHOLD = 0.6;
-    const POPUP_TIMEOUT = 1500;
-    const POST_DISMISS_DELAY = 1000; // 1 second delay before dismissing
-    const SEQUENTIAL_DISMISS_DELAY = 500; // 0.5 second between dismissals
+    const MAX_POSTS = 20;
+    const DISMISS_THRESHOLD = 0.4;
+    const POPUP_TIMEOUT = 800;
+    const POST_DISMISS_DELAY = 600;
+    const SEQUENTIAL_DISMISS_DELAY = 200;
 
     // Semantic similarity thresholds
     const SIMILARITY_THRESHOLDS = {
@@ -26573,11 +26573,45 @@ __webpack_require__.r(__webpack_exports__);
         return { marker, scoreDisplay };
     };
 
-    // LinkedIn-specific: observe the popup and auto-click "Not Interested"
+    // Helper function to search for a LinkedIn dropdown option that includes
+    // the text "hide or report this ad"
+    const findHideOrReportButton = (container) => {
+        // First, attempt to locate the dropdown container using its selector
+        const popup = container.querySelector(SELECTORS.linkedin.popupContainer);
+        if (popup) {
+            const options = popup.querySelectorAll('button, div, span');
+            for (const option of options) {
+                if (option.textContent && option.textContent.toLowerCase().includes('hide')) {
+                    return option;
+                }
+            }
+        }
+        // Fallback: search in the entire container
+        const options = container.querySelectorAll('button, div, span');
+        for (const option of options) {
+            if (option.textContent && option.textContent.toLowerCase().includes('hide')) {
+                return option;
+            }
+        }
+        return null;
+    };
+
+    // LinkedIn-specific: observe the popup and auto-click "Hide or Report This Ad"
     const handleLinkedInPopup = (postContainer) => {
         if (!shouldMark) return;
         console.log("LinkedIn: Starting to observe popup for post:", postContainer);
+
         const observer = new MutationObserver((mutations, obs) => {
+            // Check for an option to "Hide or Report This Ad" first
+            const hideReportBtn = findHideOrReportButton(postContainer);
+            if (hideReportBtn) {
+                hideReportBtn.click();
+                console.log("LinkedIn: Clicked 'Hide or Report This Ad' for post:", postContainer);
+                obs.disconnect();
+                return;
+            }
+
+            // Fallback to the default "Not Interested" button if available
             const notInterestedBtn = postContainer.querySelector(SELECTORS.linkedin.notInterested);
             if (notInterestedBtn) {
                 notInterestedBtn.click();
@@ -26628,6 +26662,39 @@ __webpack_require__.r(__webpack_exports__);
         return null;
     };
 
+    // Twitter-specific: find the "mute" button in the dropdown
+    const findMuteButton = (dropdown) => {
+        const menuItems = dropdown.querySelectorAll('div[role="menuitem"]');
+        for (const item of menuItems) {
+            if (item.textContent.toLowerCase().includes('mute')) {
+                return item;
+            }
+        }
+        return null;
+    };
+
+    // Add this helper function among the Twitter-specific functions
+    const observeTwitterSheetDialog = () => {
+        const observer = new MutationObserver((mutations, obs) => {
+            const dialog = document.querySelector('div[data-testid="sheetDialog"]');
+            if (dialog) {
+                // Look for a button or link with text including "maybe later"
+                const maybeLaterButton = Array.from(dialog.querySelectorAll('button, a'))
+                    .find(btn => btn.textContent && btn.textContent.toLowerCase().includes('maybe later'));
+                if (maybeLaterButton) {
+                    maybeLaterButton.click();
+                    console.log("Twitter: 'Maybe later' clicked in sheetDialog.");
+                    obs.disconnect();
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => {
+            observer.disconnect();
+            console.log("Twitter: Sheet dialog observer timed out.");
+        }, POPUP_TIMEOUT);
+    };
+
     // Dismiss a Twitter post
     const dismissTwitterPost = async (tweet, postInfo) => {
         if (!shouldMark || isDismissing) return;
@@ -26662,6 +26729,15 @@ __webpack_require__.r(__webpack_exports__);
                     await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
                     notInterestedButton.click();
                     postInfo.dismissed = true;
+                } else {
+                    const muteButton = findMuteButton(activeDropdown);
+                    if (muteButton) {
+                        await new Promise(resolve => setTimeout(resolve, POST_DISMISS_DELAY));
+                        muteButton.click();
+
+                        postInfo.dismissed = true;
+                        observeTwitterSheetDialog()
+                    }
                 }
                 activeDropdown = null;
             }
@@ -26673,18 +26749,41 @@ __webpack_require__.r(__webpack_exports__);
 
     // Delete all posts with a low (red) similarity score
     const deleteAllRedPosts = async () => {
+        // First pass: Get all posts with a similarity score below the MEDIUM threshold (i.e., "red" posts)
         const redPosts = Array.from(processedPosts.entries())
             .filter(([_, data]) => data.info.score < SIMILARITY_THRESHOLDS.MEDIUM);
 
+        console.log(`First pass: Found ${redPosts.length} posts to delete`);
+
+        // First pass - trigger delete buttons using the existing UI controls
         for (const [postElement, data] of redPosts) {
-            const platform = window.location.href.includes('linkedin.com') ? 'linkedin' : 'twitter';
-            if (platform === 'linkedin') {
-                const dismissButton = postElement.querySelector(SELECTORS.linkedin.dismissButton);
-                if (dismissButton) {
-                    await dismissLinkedInPost(dismissButton, data.info, postElement);
+            const controls = data.controls;
+            if (controls) {
+                const deleteButton = controls.querySelector('button');
+                if (deleteButton) {
+                    deleteButton.click();
+                    await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
                 }
-            } else {
-                await dismissTwitterPost(postElement, data.info);
+            }
+        }
+
+        // Wait briefly to allow any animations and state updates to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Second pass - find any remaining marked posts that haven't been dismissed
+        const remainingPosts = Array.from(processedPosts.entries())
+            .filter(([_, data]) => data.info.score < SIMILARITY_THRESHOLDS.MEDIUM && !data.info.dismissed);
+
+        console.log(`Second pass: Found ${remainingPosts.length} remaining posts to delete`);
+
+        for (const [postElement, data] of remainingPosts) {
+            const controls = data.controls;
+            if (controls) {
+                const deleteButton = controls.querySelector('button');
+                if (deleteButton) {
+                    deleteButton.click();
+                    await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_DISMISS_DELAY));
+                }
             }
         }
     };
