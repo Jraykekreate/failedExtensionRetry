@@ -387,6 +387,7 @@ import { semanticSimilarity } from "./semanticSimilarity";
     };
 
     // Process a single post (LinkedIn or Twitter) based on the filter keyword
+    // Process a single post (LinkedIn or Twitter) based on the filter keyword
     const processPost = async (element, index, platform) => {
         if (!filterKeyword) return;
 
@@ -404,8 +405,23 @@ import { semanticSimilarity } from "./semanticSimilarity";
                 score: 0
             };
 
-            const titleElement = postContainer.querySelector(SELECTORS.linkedin.postTitle);
-            postInfo.title = titleElement?.firstChild?.textContent.trim().slice(0, 60) + '...';
+            // Updated LinkedIn title element selector and text processing
+            const titleElement = postContainer.querySelector('.update-components-update-v2__commentary');
+            if (!titleElement) {
+                console.warn("No title element found for LinkedIn post");
+                return;
+            }
+            const titleText = titleElement.textContent.trim();
+            console.log(titleText.slice(0, 60))
+            postInfo.title = titleText.slice(0, 60) + (titleText.length > 60 ? '...' : '');
+
+            try {
+                // Use only title text for similarity calculation
+                console.log("title", postInfo.title, filterKeyword)
+                postInfo.score = await semanticSimilarity(postInfo.title, filterKeyword);
+            } catch (error) {
+                console.error('Error calculating semantic similarity:', error);
+            }
         } else {
             postContainer = element;
             if (processedPosts.has(postContainer)) return;
@@ -419,14 +435,13 @@ import { semanticSimilarity } from "./semanticSimilarity";
 
             const tweetTextElement = postContainer.querySelector(SELECTORS.twitter.tweetText);
             postInfo.title = tweetTextElement?.textContent.trim().slice(0, 60) + '...';
-        }
 
-        try {
-            const text = postContainer.textContent;
-            postInfo.score = await semanticSimilarity(text, filterKeyword);
-        } catch (error) {
-            console.error('Error calculating semantic similarity:', error);
-            postInfo.score = Math.random();
+            try {
+                const text = postContainer.textContent.trim().slice(0, 60);
+                postInfo.score = await semanticSimilarity(text, filterKeyword);
+            } catch (error) {
+                console.error('Error calculating semantic similarity:', error);
+            }
         }
 
         const markers = addMarker(postContainer, postInfo.score);
@@ -453,7 +468,6 @@ import { semanticSimilarity } from "./semanticSimilarity";
             showFinalReport();
         }
     };
-
     // Log the final results to the console
     const showFinalReport = () => {
         console.log('%cProcessing Complete!', 'color: green; font-size: 16px;');

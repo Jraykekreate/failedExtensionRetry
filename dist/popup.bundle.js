@@ -1055,11 +1055,16 @@ const modelURL = chrome.runtime.getURL('models/model/');
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.allowRemoteModels = false;
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.useBrowserCache = false;
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.localModelPath = modelURL;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('/');
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.debug = true
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.logStats = true;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.logStats = true;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.wasm.logging = true;
 
 // Begin loading the feature-extraction pipeline.
 // This promise resolves once the model is loaded.
 const featureExtractionPromise = (0,_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.pipeline)('feature-extraction', './', {
-  device: "webgpu",
+  device: "cpu",
   quantized: false,
   cache: false
 });

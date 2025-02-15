@@ -1055,11 +1055,16 @@ const modelURL = chrome.runtime.getURL('models/model/');
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.allowRemoteModels = false;
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.useBrowserCache = false;
 _xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.localModelPath = modelURL;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('/');
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.debug = true
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.logStats = true;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.logStats = true;
+_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.env.backends.onnx.wasm.logging = true;
 
 // Begin loading the feature-extraction pipeline.
 // This promise resolves once the model is loaded.
 const featureExtractionPromise = (0,_xenova_transformers__WEBPACK_IMPORTED_MODULE_0__.pipeline)('feature-extraction', './', {
-  device: "webgpu",
+  device: "cpu",
   quantized: false,
   cache: false
 });
@@ -26789,6 +26794,7 @@ __webpack_require__.r(__webpack_exports__);
     };
 
     // Process a single post (LinkedIn or Twitter) based on the filter keyword
+    // Process a single post (LinkedIn or Twitter) based on the filter keyword
     const processPost = async (element, index, platform) => {
         if (!filterKeyword) return;
 
@@ -26806,8 +26812,23 @@ __webpack_require__.r(__webpack_exports__);
                 score: 0
             };
 
-            const titleElement = postContainer.querySelector(SELECTORS.linkedin.postTitle);
-            postInfo.title = titleElement?.firstChild?.textContent.trim().slice(0, 60) + '...';
+            // Updated LinkedIn title element selector and text processing
+            const titleElement = postContainer.querySelector('.update-components-update-v2__commentary');
+            if (!titleElement) {
+                console.warn("No title element found for LinkedIn post");
+                return;
+            }
+            const titleText = titleElement.textContent.trim();
+            console.log(titleText.slice(0, 60))
+            postInfo.title = titleText.slice(0, 60) + (titleText.length > 60 ? '...' : '');
+
+            try {
+                // Use only title text for similarity calculation
+                console.log("title", postInfo.title, filterKeyword)
+                postInfo.score = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_0__.semanticSimilarity)(postInfo.title, filterKeyword);
+            } catch (error) {
+                console.error('Error calculating semantic similarity:', error);
+            }
         } else {
             postContainer = element;
             if (processedPosts.has(postContainer)) return;
@@ -26821,14 +26842,13 @@ __webpack_require__.r(__webpack_exports__);
 
             const tweetTextElement = postContainer.querySelector(SELECTORS.twitter.tweetText);
             postInfo.title = tweetTextElement?.textContent.trim().slice(0, 60) + '...';
-        }
 
-        try {
-            const text = postContainer.textContent;
-            postInfo.score = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_0__.semanticSimilarity)(text, filterKeyword);
-        } catch (error) {
-            console.error('Error calculating semantic similarity:', error);
-            postInfo.score = Math.random();
+            try {
+                const text = postContainer.textContent.trim().slice(0, 60);
+                postInfo.score = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_0__.semanticSimilarity)(text, filterKeyword);
+            } catch (error) {
+                console.error('Error calculating semantic similarity:', error);
+            }
         }
 
         const markers = addMarker(postContainer, postInfo.score);
@@ -26855,7 +26875,6 @@ __webpack_require__.r(__webpack_exports__);
             showFinalReport();
         }
     };
-
     // Log the final results to the console
     const showFinalReport = () => {
         console.log('%cProcessing Complete!', 'color: green; font-size: 16px;');

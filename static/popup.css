@@ -3,6 +3,7 @@ body {
     background: linear-gradient(135deg, #f9f9f9, #e9e9e9);
     margin: 0;
     padding: 20px;
+    border-radius: 40px;
     display: flex;
     justify-content: center;
     flex-direction: column;
@@ -70,7 +71,7 @@ button:hover {
 .mark {
     background-color: royalblue;
 }
-.mark {
+.mark:hover {
     background-color: rgb(24, 76, 235);
 }
 .container p {

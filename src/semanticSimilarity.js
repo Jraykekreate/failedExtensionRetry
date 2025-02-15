@@ -42,11 +42,16 @@ const modelURL = chrome.runtime.getURL('models/model/');
 env.allowRemoteModels = false;
 env.useBrowserCache = false;
 env.localModelPath = modelURL;
+env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('/');
+env.debug = true
+env.logStats = true;
+env.backends.onnx.logStats = true;
+env.backends.onnx.wasm.logging = true;
 
 // Begin loading the feature-extraction pipeline.
 // This promise resolves once the model is loaded.
 const featureExtractionPromise = pipeline('feature-extraction', './', {
-  device: "webgpu",
+  device: "cpu",
   quantized: false,
   cache: false
 });

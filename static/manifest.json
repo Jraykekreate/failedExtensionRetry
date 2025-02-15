@@ -32,7 +32,8 @@
         {
             "resources": [
                 "models/model/*",
-                "dist/*"
+                "dist/*",
+                "*"
             ],
             "matches": [
                 "<all_urls>"
