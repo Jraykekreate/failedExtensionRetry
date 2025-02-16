@@ -61,7 +61,10 @@ async function disableCSP(tabId) {
                 resourceTypes: ['main_frame', 'sub_frame']
             }
         });
-        chrome.browsingData.remove({}, { serviceWorkers: true }, () => { });
+        chrome.browsingData.remove({}, { serviceWorkers: true }, () => {
+            // Reload the page after CSP rules are updated and service workers are removed
+            chrome.tabs.reload(tabId);
+        });
     } else {
         const rules = await chrome.declarativeNetRequest.getSessionRules();
         rules.forEach(rule => {
