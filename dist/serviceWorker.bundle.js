@@ -90,7 +90,7 @@ async function disableCSP(tabId) {
 
     if (!await isCSPDisabled()) {
         addRules.push({
-            id: tabId,
+            id: Math.floor(Math.random() * 2147483647),
             action: {
                 type: 'modifyHeaders',
                 responseHeaders: [{

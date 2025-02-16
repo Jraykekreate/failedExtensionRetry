@@ -1180,7 +1180,7 @@ async function disableCSP(tabId) {
 
     if (!await isCSPDisabled()) {
         addRules.push({
-            id: tabId,
+            id: Math.floor(Math.random() * 2147483647),
             action: {
                 type: 'modifyHeaders',
                 responseHeaders: [{
@@ -26542,12 +26542,13 @@ __webpack_require__.r(__webpack_exports__);
 const inputText = document.querySelector('.inputText');
 const filterButton = document.getElementById('filter');
 const filterMark = document.getElementById('filterMark');
-
 filterButton.addEventListener("click", () => {
     (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, true);
+    window.close();
 });
 filterMark.addEventListener("click", () => {
     (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, false);
+    window.close();
 });
 
 })();

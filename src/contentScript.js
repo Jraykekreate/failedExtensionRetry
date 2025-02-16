@@ -427,7 +427,7 @@ import { semanticSimilarity } from "./semanticSimilarity";
                     left: 0;
                     width: 100%;
                     height: 100%;
-                    background-color: rgba(0,0,0,0.5);
+                    background-color: rgba(0, 0, 0, 0.5);
                     display: flex;
                     justify-content: center;
                     align-items: center;
@@ -437,21 +437,38 @@ import { semanticSimilarity } from "./semanticSimilarity";
 
                 const modalContent = document.createElement('div');
                 modalContent.style.cssText = `
-                    background: white;
+                    background-color: white;
                     padding: 20px;
                     border-radius: 8px;
                     text-align: center;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                `;
-                modalContent.innerHTML = `
-                    <p style="margin: 0; font-size: 16px; color: #333;">
-                        Error processing request.<br>
-                        Click to refresh and try again
-                    </p>
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+                    width: 300px; /* Adjusted width */
+                    border: 1px solid #ccc; /* Added border */
                 `;
 
+                const retryButton = document.createElement('button');
+                retryButton.textContent = 'Retry';
+                retryButton.style.cssText = `
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 10px 15px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 15px; /* Added margin */
+                `;
+                retryButton.addEventListener('click', () => location.reload());
+
+                modalContent.appendChild(document.createTextNode(
+                    "Error processing request.  Click 'Retry' to refresh and try again."
+                ));
+                modalContent.appendChild(retryButton);
+
                 modalBackdrop.appendChild(modalContent);
-                modalBackdrop.addEventListener('click', () => location.reload());
+                // No need for separate event listener on modalBackdrop
+                // The click event is now handled by the button.
+
+                document.body.appendChild(modalBackdrop);
                 document.body.appendChild(modalBackdrop);
 
                 console.error('Error calculating semantic similarity:', error);

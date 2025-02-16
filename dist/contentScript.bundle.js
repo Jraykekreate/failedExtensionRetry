@@ -26827,6 +26827,57 @@ __webpack_require__.r(__webpack_exports__);
                 console.log("title", postInfo.title, filterKeyword)
                 postInfo.score = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_0__.semanticSimilarity)(postInfo.title, filterKeyword);
             } catch (error) {
+                const modalBackdrop = document.createElement('div');
+                modalBackdrop.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 9999;
+                    cursor: pointer;
+                `;
+
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background-color: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    text-align: center;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+                    width: 300px; /* Adjusted width */
+                    border: 1px solid #ccc; /* Added border */
+                `;
+
+                const retryButton = document.createElement('button');
+                retryButton.textContent = 'Retry';
+                retryButton.style.cssText = `
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 10px 15px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 15px; /* Added margin */
+                `;
+                retryButton.addEventListener('click', () => location.reload());
+
+                modalContent.appendChild(document.createTextNode(
+                    "Error processing request.  Click 'Retry' to refresh and try again."
+                ));
+                modalContent.appendChild(retryButton);
+
+                modalBackdrop.appendChild(modalContent);
+                // No need for separate event listener on modalBackdrop
+                // The click event is now handled by the button.
+
+                document.body.appendChild(modalBackdrop);
+                document.body.appendChild(modalBackdrop);
+
                 console.error('Error calculating semantic similarity:', error);
             }
         } else {
