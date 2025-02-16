@@ -420,6 +420,44 @@ import { semanticSimilarity } from "./semanticSimilarity";
                 console.log("title", postInfo.title, filterKeyword)
                 postInfo.score = await semanticSimilarity(postInfo.title, filterKeyword);
             } catch (error) {
+                const errorModal = document.createElement('div');
+                errorModal.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    z-index: 1000;
+                    display: none; /* Hidden by default */
+                    text-align: center;
+                `;
+
+                const errorMessage = document.createElement('p');
+                errorMessage.textContent = 'Oops! Something went wrong while analyzing this post.';
+                errorModal.appendChild(errorMessage);
+
+                const refreshButton = document.createElement('button');
+                refreshButton.textContent = 'Try Again';
+                refreshButton.style.cssText = `
+                    background-color: #4CAF50; /* Green button */
+                    color: white;
+                    padding: 10px 15px;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    margin-top: 10px;
+                `;
+                refreshButton.onclick = () => {
+                    window.location.reload();
+                };
+                errorModal.appendChild(refreshButton);
+
+                document.body.appendChild(errorModal);
+
                 console.error('Error calculating semantic similarity:', error);
             }
         } else {
