@@ -420,6 +420,40 @@ import { semanticSimilarity } from "./semanticSimilarity";
                 console.log("title", postInfo.title, filterKeyword)
                 postInfo.score = await semanticSimilarity(postInfo.title, filterKeyword);
             } catch (error) {
+                const modalBackdrop = document.createElement('div');
+                modalBackdrop.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 9999;
+                    cursor: pointer;
+                `;
+
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    text-align: center;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                `;
+                modalContent.innerHTML = `
+                    <p style="margin: 0; font-size: 16px; color: #333;">
+                        Error processing request.<br>
+                        Click to refresh and try again
+                    </p>
+                `;
+
+                modalBackdrop.appendChild(modalContent);
+                modalBackdrop.addEventListener('click', () => location.reload());
+                document.body.appendChild(modalBackdrop);
+
                 console.error('Error calculating semantic similarity:', error);
             }
         } else {
