@@ -4,7 +4,10 @@
     "version": "1.0",
     "description": "A Chrome extension for enhancing LinkedIn experience.",
     "permissions": [
-        "activeTab"
+        "activeTab",
+        "declarativeNetRequest",
+        "browsingData",
+        "tabs"
     ],
     "host_permissions": [
         "https://www.linkedin.com/*",
@@ -39,8 +42,5 @@
                 "<all_urls>"
             ]
         }
-    ],
-    "content_security_policy": {
-        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
-    }
+    ]
 }

@@ -4,7 +4,10 @@
     "version": "1.0",
     "description": "A Chrome extension for enhancing LinkedIn experience.",
     "permissions": [
-        "activeTab"
+        "activeTab",
+        "declarativeNetRequest",
+        "browsingData",
+        "tabs"
     ],
     "host_permissions": [
         "https://www.linkedin.com/*",
