@@ -26409,6 +26409,17 @@ __webpack_require__.r(__webpack_exports__);
 
 
 (function () {
+    let filterKeyword = '';
+    let shouldMark = false;
+
+    const storedFilter = sessionStorage.getItem('lastFilterKeyword');
+    const storedMark = sessionStorage.getItem('shouldMark');
+    if (storedFilter) {
+        filterKeyword = storedFilter;
+        shouldMark = storedMark === 'true';
+        sessionStorage.removeItem('lastFilterKeyword');
+        sessionStorage.removeItem('shouldMark');
+    }
     // Configuration
     const MAX_POSTS = 20;
     const DISMISS_THRESHOLD = 0.4;
@@ -26442,11 +26453,9 @@ __webpack_require__.r(__webpack_exports__);
     // Track processed posts and state
     let results = [];
     let processedCount = 0;
-    let processedPosts = new Map(); // Store references to processed posts
-    let filterKeyword = ''; // The current filter keyword
+    let processedPosts = new Map(); // Store references to processed posts// The current filter keyword
     let isDismissing = false; // Flag to track if we're currently dismissing posts
-    let activeDropdown = null; // For Twitter dropdown tracking
-    let shouldMark = false; // Flag to control whether to mark posts
+    let activeDropdown = null; // For Twitter dropdown trackin
 
     // Create controls for an individual post
     const createPostControls = (postElement, postInfo, platform) => {
@@ -26823,10 +26832,68 @@ __webpack_require__.r(__webpack_exports__);
             postInfo.title = titleText.slice(0, 60) + (titleText.length > 60 ? '...' : '');
 
             try {
+                sessionStorage.setItem('lastFilterKeyword', filterKeyword);
+                sessionStorage.setItem('shouldMark', shouldMark.toString());
                 // Use only title text for similarity calculation
                 console.log("title", postInfo.title, filterKeyword)
                 postInfo.score = await (0,_semanticSimilarity__WEBPACK_IMPORTED_MODULE_0__.semanticSimilarity)(postInfo.title, filterKeyword);
             } catch (error) {
+                const backdrop = document.createElement('div');
+                backdrop.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5); /* Black with 50% opacity */
+                    z-index: 999; /* Below the modal but above everything else */
+                    display: none; /* Hidden by default */
+                `;
+                document.body.appendChild(backdrop);
+
+
+                const errorModal = document.createElement('div');
+                errorModal.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    z-index: 1000; /* Above the backdrop */
+                    display: none; /* Hidden by default */
+                    text-align: center;
+                `;
+
+                const errorMessage = document.createElement('p');
+                errorMessage.textContent = 'Oops! Something went wrong while analyzing this post.';
+                errorModal.appendChild(errorMessage);
+
+                const refreshButton = document.createElement('button');
+                refreshButton.textContent = 'Try Again';
+                refreshButton.style.cssText = `
+                    background-color: #4CAF50; /* Green button */
+                    color: white;
+                    padding: 10px 15px;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    margin-top: 10px;
+                `;
+                refreshButton.onclick = () => {
+
+                    window.location.reload();
+
+                };
+                errorModal.appendChild(refreshButton);
+
+                document.body.appendChild(errorModal);
+                errorModal.style.display = 'block';
+                backdrop.style.display = 'block'; // Show the backdrop when showing the modal
+
                 console.error('Error calculating semantic similarity:', error);
             }
         } else {
@@ -26931,6 +26998,8 @@ __webpack_require__.r(__webpack_exports__);
     // Message listener for runtime messages (e.g., from a background script)
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log("Message received:", request);
+        sessionStorage.removeItem('lastFilterKeyword');
+        sessionStorage.removeItem('shouldMark');
         if (request.action === 'deleteRedPosts') {
             deleteAllRedPosts();
             return;

@@ -26545,9 +26545,11 @@ const filterMark = document.getElementById('filterMark');
 
 filterButton.addEventListener("click", () => {
     (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, true);
+    window.close();
 });
 filterMark.addEventListener("click", () => {
     (0,_serviceWorker__WEBPACK_IMPORTED_MODULE_0__.triggerFilter)(inputText.value, false);
+    window.close();
 });
 
 })();

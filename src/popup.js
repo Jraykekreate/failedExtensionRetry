@@ -6,7 +6,9 @@ const filterMark = document.getElementById('filterMark');
 
 filterButton.addEventListener("click", () => {
     triggerFilter(inputText.value, true);
+    window.close();
 });
 filterMark.addEventListener("click", () => {
     triggerFilter(inputText.value, false);
+    window.close();
 });
